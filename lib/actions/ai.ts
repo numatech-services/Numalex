@@ -51,7 +51,7 @@ export async function askAI(request: AIRequest): Promise<AIResponse> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: 'Session expirée.' };
 
-  // Correction : On force le type 'any' pour éviter l'erreur 'never' sur cabinet_id
+  // Cast 'any' pour éviter l'erreur de propriété sur 'profile'
   const { data: profile }: { data: any } = await supabase
     .from('profiles')
     .select('cabinet_id, role, full_name')
@@ -62,7 +62,7 @@ export async function askAI(request: AIRequest): Promise<AIResponse> {
 
   let matterContext = '';
   if (request.matterId) {
-    // Correction : Forçage du type 'any' pour le dossier (matter)
+    // Cast 'any' pour éviter l'erreur sur 'matter'
     const { data: matter }: { data: any } = await supabase
       .from('matters')
       .select(`
@@ -120,7 +120,7 @@ ${(docs.data ?? []).map((d: any) => `- ${d.title} (${d.doc_type}) du ${d.created
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20240620', // Mis à jour pour le bon modèle Claude
+        model: 'claude-3-5-sonnet-20240620',
         max_tokens: 2000,
         system: systemPrompt,
         messages: [{ role: 'user', content: fullPrompt }],
@@ -137,7 +137,8 @@ ${(docs.data ?? []).map((d: any) => `- ${d.title} (${d.doc_type}) du ${d.created
     const data = await apiResponse.json();
     const responseText = data.content?.[0]?.text ?? 'Pas de réponse.';
 
-    await supabase.from('ai_logs').insert({
+    // Correction CRUCIALE : cast 'as any' pour l'insertion dans ai_logs
+    await (supabase.from('ai_logs') as any).insert({
       cabinet_id: profile.cabinet_id,
       user_id: user.id,
       action: request.action,
@@ -154,11 +155,11 @@ ${(docs.data ?? []).map((d: any) => `- ${d.title} (${d.doc_type}) du ${d.created
 
 function generateLocalResponse(request: AIRequest, context: string): AIResponse {
   const templates: Record<string, string> = {
-    summarize: `📋 **Résumé du dossier**\n\n${context || 'Aucun dossier sélectionné.'}\n\n⚠️ *Pour des résumés détaillés avec analyse juridique, configurez la clé API Anthropic dans .env.local.*`,
-    draft_letter: `📝 **Modèle de courrier**\n\nMaître [NOM],\nAvocat au Barreau de Niamey\n\nObjet : [OBJET]\n\nMaître / Monsieur / Madame,\n\nJ'ai l'honneur de [CORPS DU COURRIER].\n\n⚠️ *Configurez ANTHROPIC_API_KEY pour des courriers personnalisés.*`,
-    checklist: `✅ **Checklist juridique**\n\n1. 🔴 URGENT — Vérifier les délais de procédure\n2. 🟠 IMPORTANT — Préparer les conclusions\n\n⚠️ *Configurez ANTHROPIC_API_KEY pour des checklists adaptées.*`,
-    suggest_actions: `💡 **Actions suggérées**\n\n1. **Vérifier les échéances** — Délai : immédiat\n2. **Préparer les pièces** — Délai : 48h\n\n⚠️ *Configurez ANTHROPIC_API_KEY pour des suggestions basées sur l'analyse.*`,
-    custom: `🤖 L'assistant IA est disponible. Ajoutez votre clé API dans .env.local pour l'activer.`,
+    summarize: `📋 **Résumé du dossier**\n\n${context || 'Aucun dossier sélectionné.'}\n\n⚠️ *Clé API manquante dans .env.local.*`,
+    draft_letter: `📝 **Modèle de courrier**\n\nMaître [NOM],\nAvocat au Barreau de Niamey\n\nObjet : [OBJET]\n\n⚠️ *Clé API manquante dans .env.local.*`,
+    checklist: `✅ **Checklist juridique**\n\n1. 🔴 URGENT — Vérifier les délais de procédure\n\n⚠️ *Clé API manquante dans .env.local.*`,
+    suggest_actions: `💡 **Actions suggérées**\n\n1. **Vérifier les échéances** — Délai : immédiat\n\n⚠️ *Clé API manquante dans .env.local.*`,
+    custom: `🤖 Assistant IA local actif. Ajoutez ANTHROPIC_API_KEY pour l'IA Claude.`,
   };
 
   return {
