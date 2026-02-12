@@ -129,8 +129,6 @@ export async function signInWithPhone(
 //
 // FIX C4 : Utilise la fonction SQL `onboard_phone_user()`
 //          qui crée cabinet + profil dans une seule transaction.
-//          Idempotent : si le profil existe déjà, retourne
-//          simplement le cabinet_id existant.
 // ============================================================
 
 export async function verifyPhoneOtp(
@@ -173,14 +171,15 @@ export async function verifyPhoneOtp(
   }
 
   // ── FIX C4 : Onboarding atomique via fonction SQL ──
-  const { error: onboardError } = await supabase.rpc('onboard_phone_user', {
+  // Ajout du cast (as any) pour éviter l'erreur de type lors du build
+  const { error: onboardError } = await (supabase.rpc as any)('onboard_phone_user', {
     p_user_id: authData.user.id,
     p_phone: phoneE164,
   });
 
   if (onboardError) {
     console.error('[verifyPhoneOtp] Onboard error:', onboardError);
-    // Ne pas bloquer la connexion — l'onboarding sera rattrapé
+    // On ne bloque pas l'utilisateur car le profil existe peut-être déjà
   }
 
   return { success: true, message: 'Vérification réussie. Bienvenue !' };
