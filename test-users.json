@@ -1,0 +1,82 @@
+[
+  {
+    "email": "superadmin@numalex.ne",
+    "password_clear": "SuperAdmin2026!",
+    "role": "avocat",
+    "rbac_role": "admin",
+    "profession": "avocat",
+    "full_name": "Me Ibrahima DIALLO",
+    "cabinet": "diallo-avocats",
+    "password_sha256": "4a7372bd055b0d93fbd42915bd03a7d6a58c81f9e0be5ac9fe8f57c2b5c359b5"
+  },
+  {
+    "email": "admin.notaire@numalex.ne",
+    "password_clear": "AdminNotaire2026!",
+    "role": "notaire",
+    "rbac_role": "admin",
+    "profession": "notaire",
+    "full_name": "Me Hamidou GARBA",
+    "cabinet": "garba-notaire",
+    "password_sha256": "444c8e615eb21c99c23903225a260b23059f8b2ab63e6e3ef09615fb237c750b"
+  },
+  {
+    "email": "admin.huissier@numalex.ne",
+    "password_clear": "AdminHuissier2026!",
+    "role": "huissier",
+    "rbac_role": "admin",
+    "profession": "commissaire_justice",
+    "full_name": "Me Salissou IDRISSA",
+    "cabinet": "idrissa-huissier",
+    "password_sha256": "6722fe2f8d3ca7efbf713768332599292c24b4df4de931fa923cc5c2f23cb4d1"
+  },
+  {
+    "email": "associe@numalex.ne",
+    "password_clear": "Associe2026!",
+    "role": "avocat",
+    "rbac_role": "associe",
+    "profession": "avocat",
+    "full_name": "Me Aissa MAHAMADOU",
+    "cabinet": "diallo-avocats",
+    "password_sha256": "222dad504ddc92a60ca2451a8a532bfeb63c1e0db036734e37fcadee00b68883"
+  },
+  {
+    "email": "collaborateur@numalex.ne",
+    "password_clear": "Collab2026!",
+    "role": "avocat",
+    "rbac_role": "collaborateur",
+    "profession": "avocat",
+    "full_name": "Me Boubacar SEYNI",
+    "cabinet": "diallo-avocats",
+    "password_sha256": "1b84992434bc01bcb6b217796400a621d0a37b7911a760667dc3ca1cc2093110"
+  },
+  {
+    "email": "secretariat@numalex.ne",
+    "password_clear": "Secret2026!",
+    "role": "avocat",
+    "rbac_role": "secretariat",
+    "profession": "avocat",
+    "full_name": "Mme Fatima ADAM",
+    "cabinet": "diallo-avocats",
+    "password_sha256": "8262609c11ebba75e05137c9a4fba9f82960014ebb5111fb9d4eb0371e4b9a1b"
+  },
+  {
+    "email": "lecture@numalex.ne",
+    "password_clear": "Lecture2026!",
+    "role": "avocat",
+    "rbac_role": "lecture",
+    "profession": "avocat",
+    "full_name": "Stagiaire Amadou SANI",
+    "cabinet": "diallo-avocats",
+    "password_sha256": "d85475af1f5ff937c6340fc90ed5a6b26d666feef4ad35ad6ddbace644425c86"
+  },
+  {
+    "email": "client.portal@test.ne",
+    "password_clear": "Client2026!",
+    "role": "client",
+    "rbac_role": "client_portal",
+    "profession": null,
+    "full_name": "Amadou OUMAROU",
+    "cabinet": null,
+    "password_sha256": "bb00e7e20299ae34faf991163042255f9a26ca03d8726cd8dfb16c502dc8f4ff"
+  }
+]
