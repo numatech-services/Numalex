@@ -17,7 +17,9 @@ export default async function AgendaPage() {
   try { profile = await fetchCurrentProfile(); } catch { redirect('/login'); }
 
   const supabase = createClient();
-  const { data: events, count } = await supabase
+  
+  // Correction : On force le type de 'events' pour éviter l'erreur 'never'
+  const { data: events, count }: { data: any[] | null, count: number | null } = await supabase
     .from('events')
     .select('id, title, event_type, starts_at, ends_at, location, matter:matters!events_matter_id_fkey(id,title)', { count: 'exact' })
     .gte('starts_at', new Date().toISOString())
@@ -40,7 +42,7 @@ export default async function AgendaPage() {
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         {events && events.length > 0 ? (
           <div className="divide-y divide-slate-50">
-            {events.map((ev) => {
+            {events.map((ev: any) => {
               const cfg = TYPE_CONFIG[ev.event_type] ?? TYPE_CONFIG.autre;
               return (
                 <Link key={ev.id} href={`/dashboard/agenda/${ev.id}`} className="flex items-start gap-4 px-5 py-4 transition-colors hover:bg-slate-50/60">
