@@ -25,7 +25,9 @@ export default async function ProfilPage() {
   }
 
   const supabase = createClient();
-  const { data: cabinet } = await supabase
+  
+  // Correction : Forçage du type ': { data: any }' pour éviter l'erreur 'never'
+  const { data: cabinet }: { data: any } = await supabase
     .from('cabinets')
     .select('id, name, nif, address, phone')
     .eq('id', profile.cabinet_id)
