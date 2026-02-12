@@ -1,58 +1,19 @@
 // ============================================================
 // NumaLex — Composant FormField réutilisable
-// Uniformise l'affichage des champs de formulaire avec labels,
-// erreurs, et hints
+// Uniformise l'affichage des champs de formulaire
 // ============================================================
 
-import { AlertCircle, Info } from 'lucide-react';
+import React from 'react';
 
 interface FormFieldProps {
-  /**
-   * Label du champ (affiché au-dessus de l'input)
-   */
   label: string;
-
-  /**
-   * Message d'erreur (affiché en rouge sous l'input)
-   */
   error?: string;
-
-  /**
-   * Indique si le champ est obligatoire (affiche *)
-   */
   required?: boolean;
-
-  /**
-   * Texte d'aide (affiché en gris sous l'input)
-   */
   hint?: string;
-
-  /**
-   * ID du champ (pour l'attribut for du label)
-   */
   htmlFor?: string;
-
-  /**
-   * Élément input/select/textarea à afficher
-   */
   children: React.ReactNode;
 }
 
-/**
- * Composant de champ de formulaire avec label, erreur, et hint
- * 
- * @example
- * ```tsx
- * <FormField 
- *   label="Nom complet" 
- *   error={errors.name?.message}
- *   required
- *   hint="Prénom et nom de famille"
- * >
- *   <input {...register('name')} className={inputClassName(!!errors.name)} />
- * </FormField>
- * ```
- */
 export function FormField({
   label,
   error,
@@ -86,7 +47,8 @@ export function FormField({
       {/* Hint (si pas d'erreur) */}
       {hint && !error && (
         <p className="text-xs text-slate-500 flex items-center gap-1">
-          <Info className="h-3 w-3" aria-hidden="true" />
+          {/* Icône Info en SVG simple */}
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
           <span>{hint}</span>
         </p>
       )}
@@ -98,7 +60,8 @@ export function FormField({
           role="alert"
           aria-live="polite"
         >
-          <AlertCircle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+          {/* Icône Alert en SVG simple */}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <span>{error}</span>
         </p>
       )}
@@ -106,20 +69,7 @@ export function FormField({
   );
 }
 
-/**
- * Génère les classes CSS pour un input avec ou sans erreur
- * 
- * @param hasError - True si le champ a une erreur
- * @returns Classes CSS appropriées
- * 
- * @example
- * ```tsx
- * <input
- *   {...register('email')}
- *   className={inputClassName(!!errors.email)}
- * />
- * ```
- */
+// Les fonctions utilitaires (inputClassName, etc.) restent inchangées
 export function inputClassName(hasError?: boolean): string {
   const baseClasses =
     'w-full px-3 py-2 border rounded-lg text-slate-900 placeholder-slate-400 ' +
@@ -129,27 +79,17 @@ export function inputClassName(hasError?: boolean): string {
   if (hasError) {
     return `${baseClasses} border-red-300 focus:border-red-500 focus:ring-red-500`;
   }
-
   return `${baseClasses} border-slate-300 focus:border-blue-500 focus:ring-blue-500`;
 }
 
-/**
- * Classes pour les selects
- */
 export function selectClassName(hasError?: boolean): string {
   return inputClassName(hasError);
 }
 
-/**
- * Classes pour les textareas
- */
 export function textareaClassName(hasError?: boolean): string {
   return `${inputClassName(hasError)} min-h-[100px] resize-y`;
 }
 
-/**
- * Classes pour les checkboxes
- */
 export function checkboxClassName(): string {
   return (
     'h-4 w-4 text-blue-600 border-slate-300 rounded ' +
@@ -158,51 +98,22 @@ export function checkboxClassName(): string {
   );
 }
 
-/**
- * Classes pour les radios
- */
-export function radioClassName(): string {
-  return checkboxClassName();
-}
-
-/**
- * Wrapper pour les checkboxes/radios avec label
- */
-interface ChoiceFieldProps {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}
-
-export function ChoiceField({ label, hint, children }: ChoiceFieldProps) {
+export function ChoiceField({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
       <span className="block text-sm font-medium text-slate-700">{label}</span>
       <div className="space-y-2">{children}</div>
       {hint && (
         <p className="text-xs text-slate-500 flex items-center gap-1">
-          <Info className="h-3 w-3" aria-hidden="true" />
-          <span>{hint}</span>
+           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+           <span>{hint}</span>
         </p>
       )}
     </div>
   );
 }
 
-/**
- * Option pour checkbox/radio
- */
-interface ChoiceOptionProps {
-  label: string;
-  description?: string;
-  children: React.ReactNode;
-}
-
-export function ChoiceOption({
-  label,
-  description,
-  children,
-}: ChoiceOptionProps) {
+export function ChoiceOption({ label, description, children }: { label: string; description?: string; children: React.ReactNode }) {
   return (
     <label className="flex items-start gap-3 cursor-pointer group">
       <div className="flex items-center h-5">{children}</div>
