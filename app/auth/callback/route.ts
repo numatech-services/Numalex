@@ -59,9 +59,10 @@ export async function GET(request: NextRequest) {
     {
       cookies: {
         getAll() { return cookieStore.getAll(); },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: any) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) => {
+            cookiesToSet.forEach((cookie: any) => {
+              const { name, value, options } = cookie;
               cookieStore.set(name, value, {
                 ...options,
                 httpOnly: true,
