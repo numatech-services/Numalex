@@ -19,13 +19,12 @@ export default async function ClientDocumentsPage() {
 
   if (!access) redirect('/login');
 
-  const { data: matters } = await supabase
-    .from('matters')
-    .select('id')
-    .eq('client_id', access.client_id);
+ const { data: matters }: { data: any[] | null } = await supabase
+  .from('matters')
+  .select('id')
+  .eq('client_id', access.client_id);
 
-  const ids = (matters ?? []).map(m => m.id);
-  
+const ids = (matters ?? []).map(m => m.id);  
   let docs: Array<{ 
     id: string; 
     title: string; 
