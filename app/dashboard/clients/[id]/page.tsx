@@ -21,7 +21,9 @@ export default async function EditClientPage({ params }: { params: { id: string 
   }
 
   const supabase = createClient();
-  const { data: client, error } = await supabase
+  
+  // Correction : Forçage du type ': { data: any }' pour éviter l'erreur 'never'
+  const { data: client, error }: { data: any, error: any } = await supabase
     .from('clients')
     .select('id, full_name, client_type, phone, email, address, notes')
     .eq('id', params.id)
