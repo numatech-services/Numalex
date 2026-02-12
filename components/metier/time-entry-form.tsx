@@ -7,7 +7,8 @@ import { useToast } from '@/components/ui/toast';
 
 interface Props {
   matters: { id: string; title: string }[];
-  initialData?: Record<string, unknown>;
+  // Correction : On utilise 'any' ici pour simplifier l'accès aux propriétés de données initiales
+  initialData?: Record<string, any>;
 }
 
 export function TimeEntryForm({ matters, initialData }: Props) {
@@ -22,7 +23,8 @@ export function TimeEntryForm({ matters, initialData }: Props) {
     const fd = new FormData(e.currentTarget);
     startTransition(async () => {
       const r = await upsertTimeEntry({
-        id: initialData?.id,
+        // Correction : Cast explicite en string ou undefined
+        id: initialData?.id as string | undefined,
         matter_id: fd.get('matter_id') as string,
         minutes: Number(fd.get('minutes')),
         description: fd.get('description') as string,
@@ -30,8 +32,14 @@ export function TimeEntryForm({ matters, initialData }: Props) {
         hourly_rate: fd.get('hourly_rate') ? Number(fd.get('hourly_rate')) : undefined,
         billable: fd.get('billable') === 'on',
       });
-      if (r.success) { toast('success', 'Entrée enregistrée.'); router.push('/dashboard/temps'); router.refresh(); }
-      else toast('error', r.error ?? 'Erreur');
+      
+      if (r.success) { 
+        toast('success', 'Entrée enregistrée.'); 
+        router.push('/dashboard/temps'); 
+        router.refresh(); 
+      } else {
+        toast('error', r.error ?? 'Erreur');
+      }
     });
   }
 
