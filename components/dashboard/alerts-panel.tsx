@@ -23,10 +23,14 @@ export function AlertsPanel({ alerts }: { alerts: Alert[] }) {
   const unread = alerts.filter((a) => !a.read);
 
   function dismiss(alertId: string) {
-    // Correction : On appelle l'action à l'intérieur d'un bloc async 
-    // qui ne retourne rien au startTransition
+    // La fonction passée à startTransition doit être synchrone 
+    // ou retourner void/undefined pour éviter les erreurs de surcharge (overload)
     startTransition(async () => {
-      await markAlertRead(alertId);
+      try {
+        await markAlertRead(alertId);
+      } catch (error) {
+        console.error("Erreur lors de la lecture de l'alerte:", error);
+      }
     });
   }
 
@@ -34,9 +38,14 @@ export function AlertsPanel({ alerts }: { alerts: Alert[] }) {
     <div className="rounded-2xl border border-orange-200 bg-white p-5 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-orange-600">
-          Alertes {unread.length > 0 && <span className="ml-1 rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] text-white">{unread.length}</span>}
+          Alertes {unread.length > 0 && (
+            <span className="ml-1 rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] text-white">
+              {unread.length}
+            </span>
+          )}
         </h2>
       </div>
+
       {alerts.length > 0 ? (
         <div className="space-y-2">
           {alerts.slice(0, 6).map((a) => {
@@ -44,7 +53,9 @@ export function AlertsPanel({ alerts }: { alerts: Alert[] }) {
             return (
               <div
                 key={a.id}
-                className={`flex items-start gap-2.5 rounded-xl border-l-4 ${style.border} ${style.bg} p-3 ${a.read ? 'opacity-50' : ''}`}
+                className={`flex items-start gap-2.5 rounded-xl border-l-4 ${style.border} ${style.bg} p-3 ${
+                  a.read ? 'opacity-50' : ''
+                }`}
               >
                 <span className="mt-0.5 text-sm">{style.icon}</span>
                 <p className={`flex-1 text-xs font-medium ${style.text}`}>{a.message}</p>
@@ -52,10 +63,13 @@ export function AlertsPanel({ alerts }: { alerts: Alert[] }) {
                   <button
                     onClick={() => dismiss(a.id)}
                     disabled={isPending}
-                    className="shrink-0 rounded p-0.5 text-slate-400 hover:text-slate-600"
+                    className="shrink-0 rounded p-0.5 text-slate-400 hover:text-slate-600 disabled:cursor-not-allowed"
                     title="Marquer comme lu"
                   >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
                   </button>
                 )}
               </div>
