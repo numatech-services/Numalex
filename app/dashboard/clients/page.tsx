@@ -19,7 +19,9 @@ export default async function ClientsPage() {
   }
 
   const supabase = createClient();
-  const { data: clients, count } = await supabase
+  
+  // Correction : Typage explicite ': { data: any[] | null, count: number | null }'
+  const { data: clients, count }: { data: any[] | null, count: number | null } = await supabase
     .from('clients')
     .select('id, full_name, client_type, phone, email, created_at', { count: 'exact' })
     .order('full_name', { ascending: true })
@@ -59,7 +61,7 @@ export default async function ClientsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {clients.map((client) => (
+                {clients.map((client: any) => (
                   <tr key={client.id} className="group transition-colors hover:bg-slate-50/60">
                     <td className="px-5 py-4">
                       <Link href={`/dashboard/clients/${client.id}`} className="font-medium text-slate-900 group-hover:text-slate-700">
