@@ -6,18 +6,27 @@ import { fetchCurrentProfile } from '@/lib/queries/matters';
 export const metadata = { title: 'Suivi du temps' };
 
 export default async function TimeEntriesPage() {
-  let profile; try { profile = await fetchCurrentProfile(); } catch { redirect('/login'); }
+  let profile; 
+  try { 
+    profile = await fetchCurrentProfile(); 
+  } catch { 
+    redirect('/login'); 
+  }
+  
   if (profile.role !== 'avocat') redirect('/dashboard');
 
   const supabase = createClient();
-  const { data: entries, count } = await supabase
+  
+  // Correction : Typage explicite ': { data: any[] | null, count: number | null }'
+  const { data: entries, count }: { data: any[] | null, count: number | null } = await supabase
     .from('time_entries')
     .select('id, minutes, description, entry_date, hourly_rate, amount, billable, invoiced, matter:matters!time_entries_matter_id_fkey(id,title)', { count: 'exact' })
     .order('entry_date', { ascending: false })
     .limit(50);
 
-  const totalMinutes = (entries ?? []).reduce((s, e) => s + (e.minutes ?? 0), 0);
-  const totalAmount = (entries ?? []).reduce((s, e) => s + (e.amount ?? 0), 0);
+  // Correction : On précise (e: any) pour le reduce
+  const totalMinutes = (entries ?? []).reduce((s, e: any) => s + (e.minutes ?? 0), 0);
+  const totalAmount = (entries ?? []).reduce((s, e: any) => s + (e.amount ?? 0), 0);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -37,15 +46,17 @@ export default async function TimeEntriesPage() {
         {entries && entries.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead><tr className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-400">
-                <th className="px-5 py-3.5 font-medium">Date</th>
-                <th className="px-5 py-3.5 font-medium">Dossier</th>
-                <th className="px-5 py-3.5 font-medium">Description</th>
-                <th className="px-5 py-3.5 font-medium text-right">Durée</th>
-                <th className="px-5 py-3.5 font-medium text-right">Montant</th>
-              </tr></thead>
+              <thead>
+                <tr className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-400">
+                  <th className="px-5 py-3.5 font-medium">Date</th>
+                  <th className="px-5 py-3.5 font-medium">Dossier</th>
+                  <th className="px-5 py-3.5 font-medium">Description</th>
+                  <th className="px-5 py-3.5 font-medium text-right">Durée</th>
+                  <th className="px-5 py-3.5 font-medium text-right">Montant</th>
+                </tr>
+              </thead>
               <tbody className="divide-y divide-slate-50">
-                {entries.map(e => (
+                {entries.map((e: any) => (
                   <tr key={e.id} className="hover:bg-slate-50/60">
                     <td className="px-5 py-3 text-xs text-slate-500">{e.entry_date}</td>
                     <td className="px-5 py-3 text-slate-700">{e.matter?.title ?? '—'}</td>
