@@ -16,7 +16,7 @@ export default async function ClientInvoicesPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  // On force le type ': { data: any }' pour éviter l'erreur 'never' sur client_id
+  // 1. Correction du typage access
   const { data: access }: { data: any } = await supabase
     .from('client_portal_access')
     .select('client_id')
@@ -26,7 +26,8 @@ export default async function ClientInvoicesPage() {
 
   if (!access) redirect('/login');
 
-  const { data: invoices } = await supabase
+  // 2. Correction du typage invoices pour autoriser le .map() et l'accès aux propriétés
+  const { data: invoices }: { data: any[] | null } = await supabase
     .from('invoices')
     .select('id, invoice_number, total_ttc, status, due_at')
     .eq('client_id', access.client_id)
@@ -48,7 +49,7 @@ export default async function ClientInvoicesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {invoices.map((inv) => {
+                {invoices.map((inv: any) => {
                   const st = ST[inv.status] ?? ST.brouillon;
                   return (
                     <tr key={inv.id} className="hover:bg-slate-50/60">
