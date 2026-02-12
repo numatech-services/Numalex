@@ -16,10 +16,18 @@ export default async function ClientMattersPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: access } = await supabase.from('client_portal_access').select('client_id').eq('auth_user_id', user.id).eq('active', true).single();
+  // Correction du typage pour éviter l'erreur 'never' sur client_id
+  const { data: access }: { data: any } = await supabase
+    .from('client_portal_access')
+    .select('client_id')
+    .eq('auth_user_id', user.id)
+    .eq('active', true)
+    .single();
+
   if (!access) redirect('/login');
 
-  const { data: matters } = await supabase
+  // Correction du typage pour matters
+  const { data: matters }: { data: any[] | null } = await supabase
     .from('matters')
     .select('id, title, reference, status, opened_at, updated_at')
     .eq('client_id', access.client_id)
@@ -28,7 +36,9 @@ export default async function ClientMattersPage() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       <h1 className="text-2xl font-bold text-slate-900">Mes dossiers</h1>
-      <p className="mt-1 text-sm text-slate-500">{matters?.length ?? 0} dossier{(matters?.length ?? 0) > 1 ? 's' : ''}</p>
+      <p className="mt-1 text-sm text-slate-500">
+        {matters?.length ?? 0} dossier{(matters?.length ?? 0) > 1 ? 's' : ''}
+      </p>
 
       <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         {matters && matters.length > 0 ? (
@@ -44,7 +54,9 @@ export default async function ClientMattersPage() {
                       {m.opened_at && <span>Ouvert le {m.opened_at}</span>}
                     </div>
                   </div>
-                  <span className={`rounded-lg px-2 py-0.5 text-xs font-semibold ${st.cls}`}>{st.label}</span>
+                  <span className={`rounded-lg px-2 py-0.5 text-xs font-semibold ${st.cls}`}>
+                    {st.label}
+                  </span>
                 </div>
               );
             })}
