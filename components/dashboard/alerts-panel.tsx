@@ -23,7 +23,11 @@ export function AlertsPanel({ alerts }: { alerts: Alert[] }) {
   const unread = alerts.filter((a) => !a.read);
 
   function dismiss(alertId: string) {
-    startTransition(() => markAlertRead(alertId));
+    // Correction : On appelle l'action à l'intérieur d'un bloc async 
+    // qui ne retourne rien au startTransition
+    startTransition(async () => {
+      await markAlertRead(alertId);
+    });
   }
 
   return (
