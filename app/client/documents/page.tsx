@@ -9,7 +9,7 @@ export default async function ClientDocumentsPage() {
   
   if (!user) redirect('/login');
 
-  // Ajout du typage ': any' pour éviter l'erreur 'never' lors du build
+  // Correction : Typage explicite ': { data: any }' pour éviter l'erreur 'never'
   const { data: access }: { data: any } = await supabase
     .from('client_portal_access')
     .select('client_id')
@@ -19,12 +19,14 @@ export default async function ClientDocumentsPage() {
 
   if (!access) redirect('/login');
 
- const { data: matters }: { data: any[] | null } = await supabase
-  .from('matters')
-  .select('id')
-  .eq('client_id', access.client_id);
+  // Correction : Typage ': { data: any[] | null }' pour permettre le .map()
+  const { data: matters }: { data: any[] | null } = await supabase
+    .from('matters')
+    .select('id')
+    .eq('client_id', access.client_id);
 
-const ids = (matters ?? []).map(m => m.id);  
+  const ids = (matters ?? []).map(m => m.id);  
+  
   let docs: Array<{ 
     id: string; 
     title: string; 
