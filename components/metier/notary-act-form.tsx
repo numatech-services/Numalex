@@ -17,7 +17,12 @@ const ACT_TYPES = [
   { value: 'autre', label: 'Autre' },
 ];
 
-interface Props { matters: { id: string; title: string }[]; clients: { id: string; full_name: string }[]; initialData?: Record<string, unknown>; }
+// Correction : Utilisation de any pour assouplir le typage de initialData
+interface Props { 
+  matters: { id: string; title: string }[]; 
+  clients: { id: string; full_name: string }[]; 
+  initialData?: Record<string, any>; 
+}
 
 export function NotaryActForm({ matters, clients, initialData }: Props) {
   const router = useRouter();
@@ -31,7 +36,8 @@ export function NotaryActForm({ matters, clients, initialData }: Props) {
     const fd = new FormData(e.currentTarget);
     startTransition(async () => {
       const r = await upsertNotaryAct({
-        id: initialData?.id,
+        // Correction : Cast explicite pour TypeScript
+        id: initialData?.id as string | undefined,
         title: fd.get('title') as string,
         act_type: fd.get('act_type') as string,
         act_number: fd.get('act_number') as string,
@@ -43,7 +49,11 @@ export function NotaryActForm({ matters, clients, initialData }: Props) {
         tax_amount: fd.get('tax_amount') ? Number(fd.get('tax_amount')) : undefined,
         signed: fd.get('signed') === 'on',
       });
-      if (r.success) { toast('success', 'Acte enregistré.'); router.push('/dashboard/actes'); router.refresh(); }
+      if (r.success) { 
+        toast('success', 'Acte enregistré.'); 
+        router.push('/dashboard/actes'); 
+        router.refresh(); 
+      }
       else toast('error', r.error ?? 'Erreur');
     });
   }
