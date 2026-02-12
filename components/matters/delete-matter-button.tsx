@@ -1,8 +1,3 @@
-// ============================================================
-// NumaLex — Bouton Supprimer un dossier (Client Component)
-// Affiche une modale de confirmation avant suppression.
-// ============================================================
-
 'use client';
 
 import { useState, useTransition } from 'react';
@@ -20,10 +15,12 @@ export function DeleteMatterButton({ matterId, matterTitle }: { matterId: string
       try {
         await deleteMatter(matterId);
         // redirect() dans l'action gère la navigation
-      } catch (err: unknown) {
-        // NEXT_REDIRECT est attendu et sera intercepté par Next.js
+      } catch (err: any) {
+        // Correction : On utilise 'any' pour que le build accepte l'accès à 'digest'
+        // NEXT_REDIRECT est intercepté par Next.js pour effectuer la navigation
         if (err?.digest?.includes('NEXT_REDIRECT')) return;
-        toast('error', err.message ?? 'Erreur lors de la suppression.');
+        
+        toast('error', err instanceof Error ? err.message : 'Erreur lors de la suppression.');
         setOpen(false);
       }
     });
@@ -32,6 +29,7 @@ export function DeleteMatterButton({ matterId, matterTitle }: { matterId: string
   return (
     <>
       <button
+        type="button"
         onClick={() => setOpen(true)}
         className="inline-flex h-9 items-center gap-2 rounded-lg border border-red-200 bg-white px-3.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 hover:border-red-300"
       >
