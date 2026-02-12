@@ -56,7 +56,7 @@ export function ClientForm({ initialData }: ClientFormProps) {
         toast('error', result.error);
         if (result.fieldErrors) {
           Object.entries(result.fieldErrors).forEach(([key, msgs]) => {
-            form.setError(key as keyof typeof form.getValues(), { message: msgs[0] });
+          form.setError(key as any, { message: msgs[0] });            
           });
         }
       }
