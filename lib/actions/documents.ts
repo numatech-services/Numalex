@@ -9,8 +9,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 
-interface UploadResult { success: true; documentId: string } | { success: false; error: string };
-
+type UploadResult = { success: true; documentId: string } | { success: false; error: string };
 export async function uploadDocument(formData: FormData): Promise<UploadResult> {
   const supabase = createClient();
 
