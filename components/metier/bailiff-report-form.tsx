@@ -12,7 +12,11 @@ const REPORT_TYPES = [
   { value: 'autre', label: 'Autre' },
 ];
 
-interface Props { matters: { id: string; title: string }[]; clients: { id: string; full_name: string }[]; initialData?: Record<string, unknown>; }
+interface Props { 
+  matters: { id: string; title: string }[]; 
+  clients: { id: string; full_name: string }[]; 
+  initialData?: Record<string, any>; // Correction : Utilisation de 'any' pour assouplir le typage des données initiales
+}
 
 export function BailiffReportForm({ matters, clients, initialData }: Props) {
   const router = useRouter();
@@ -26,7 +30,7 @@ export function BailiffReportForm({ matters, clients, initialData }: Props) {
     const fd = new FormData(e.currentTarget);
     startTransition(async () => {
       const r = await upsertBailiffReport({
-        id: initialData?.id,
+        id: initialData?.id as string | undefined, // Correction : Cast explicite pour TypeScript
         title: fd.get('title') as string,
         report_type: fd.get('report_type') as string,
         report_number: fd.get('report_number') as string,
@@ -41,13 +45,20 @@ export function BailiffReportForm({ matters, clients, initialData }: Props) {
         served_to: fd.get('served_to') as string,
         fees: fd.get('fees') ? Number(fd.get('fees')) : undefined,
       });
-      if (r.success) { toast('success', 'PV enregistré.'); router.push('/dashboard/constats'); router.refresh(); }
-      else toast('error', r.error ?? 'Erreur');
+      
+      if (r.success) { 
+        toast('success', 'PV enregistré.'); 
+        router.push('/dashboard/constats'); 
+        router.refresh(); 
+      } else {
+        toast('error', r.error ?? 'Erreur');
+      }
     });
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      {/* ... (Reste du JSX inchangé) ... */}
       <div className="space-y-1.5">
         <label htmlFor={`${fid}-t`} className="block text-sm font-medium text-slate-700">Intitulé <span className="text-red-500">*</span></label>
         <input id={`${fid}-t`} name="title" type="text" required defaultValue={initialData?.title ?? ''} disabled={isPending} className={cls} placeholder="Ex : Constat d'affichage — Parcelle 204" />
