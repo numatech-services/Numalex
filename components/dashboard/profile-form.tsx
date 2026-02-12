@@ -1,7 +1,3 @@
-// ============================================================
-// NumaLex — Formulaire Profil (Client Component)
-// ============================================================
-
 'use client';
 
 import { useState, useTransition } from 'react';
@@ -26,9 +22,13 @@ export function ProfileForm({ profileId, defaultName, defaultPhone }: ProfileFor
     e.preventDefault();
     startTransition(async () => {
       const supabase = createClient();
-      const { error } = await supabase
-        .from('profiles')
-        .update({ full_name: name.trim() || null, phone: phone.trim() || null })
+      
+      // Correction : On force l'accès à la table pour éviter l'erreur 'never'
+      const { error } = await (supabase.from('profiles') as any)
+        .update({ 
+          full_name: name.trim() || null, 
+          phone: phone.trim() || null 
+        })
         .eq('id', profileId);
 
       if (error) {
