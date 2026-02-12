@@ -9,7 +9,8 @@ export default async function ClientDashboard() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: access } = await supabase
+  // Correction : Typage explicite ': { data: any }' pour débloquer le build
+  const { data: access }: { data: any } = await supabase
     .from('client_portal_access')
     .select('client_id')
     .eq('auth_user_id', user.id)
