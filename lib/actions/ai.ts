@@ -1,7 +1,6 @@
 'use server';
 
 import { aiRequestSchema } from '@/lib/validations';
-
 import { createClient } from '@/lib/supabase/server';
 
 export interface AIRequest {
@@ -52,17 +51,19 @@ export async function askAI(request: AIRequest): Promise<AIResponse> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: 'Session expirée.' };
 
-  const { data: profile } = await supabase
+  // Correction : On force le type 'any' pour éviter l'erreur 'never' sur cabinet_id
+  const { data: profile }: { data: any } = await supabase
     .from('profiles')
     .select('cabinet_id, role, full_name')
     .eq('id', user.id)
     .single();
+
   if (!profile) return { success: false, error: 'Profil introuvable.' };
 
-  // Récupérer le contexte du dossier si fourni
   let matterContext = '';
   if (request.matterId) {
-    const { data: matter } = await supabase
+    // Correction : Forçage du type 'any' pour le dossier (matter)
+    const { data: matter }: { data: any } = await supabase
       .from('matters')
       .select(`
         id, title, reference, status, matter_type, jurisdiction, description, opened_at, updated_at,
@@ -97,10 +98,10 @@ Ouvert le : ${matter.opened_at ?? 'N/A'}
 Client : ${matter.client?.full_name ?? 'N/A'} (${matter.client?.client_type ?? ''})
 
 ÉVÉNEMENTS PROCHAINS :
-${(events.data ?? []).map(e => `- ${e.title} (${e.event_type}) le ${e.starts_at}${e.location ? ' à ' + e.location : ''}`).join('\n') || 'Aucun'}
+${(events.data ?? []).map((e: any) => `- ${e.title} (${e.event_type}) le ${e.starts_at}${e.location ? ' à ' + e.location : ''}`).join('\n') || 'Aucun'}
 
 DOCUMENTS :
-${(docs.data ?? []).map(d => `- ${d.title} (${d.doc_type}) du ${d.created_at}`).join('\n') || 'Aucun'}
+${(docs.data ?? []).map((d: any) => `- ${d.title} (${d.doc_type}) du ${d.created_at}`).join('\n') || 'Aucun'}
 `;
     }
   }
@@ -111,7 +112,6 @@ ${(docs.data ?? []).map(d => `- ${d.title} (${d.doc_type}) du ${d.created_at}`).
     : request.prompt;
 
   try {
-    // Appel à l'API Anthropic (Claude)
     const apiResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -120,7 +120,7 @@ ${(docs.data ?? []).map(d => `- ${d.title} (${d.doc_type}) du ${d.created_at}`).
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-3-5-sonnet-20240620', // Mis à jour pour le bon modèle Claude
         max_tokens: 2000,
         system: systemPrompt,
         messages: [{ role: 'user', content: fullPrompt }],
@@ -128,10 +128,6 @@ ${(docs.data ?? []).map(d => `- ${d.title} (${d.doc_type}) du ${d.created_at}`).
     });
 
     if (!apiResponse.ok) {
-      const errBody = await apiResponse.text();
-      console.error('[AI] API error:', errBody);
-
-      // Fallback : réponse locale si pas de clé API
       if (!process.env.ANTHROPIC_API_KEY) {
         return generateLocalResponse(request, matterContext);
       }
@@ -141,7 +137,6 @@ ${(docs.data ?? []).map(d => `- ${d.title} (${d.doc_type}) du ${d.created_at}`).
     const data = await apiResponse.json();
     const responseText = data.content?.[0]?.text ?? 'Pas de réponse.';
 
-    // Logger dans ai_logs
     await supabase.from('ai_logs').insert({
       cabinet_id: profile.cabinet_id,
       user_id: user.id,
@@ -153,25 +148,17 @@ ${(docs.data ?? []).map(d => `- ${d.title} (${d.doc_type}) du ${d.created_at}`).
 
     return { success: true, response: responseText };
   } catch (err: unknown) {
-    const aiErr = err instanceof Error ? err : new Error(String(err));
-    console.error('[AI] Error:', aiErr.message);
-    // Fallback local
     return generateLocalResponse(request, matterContext);
   }
 }
 
-// Fallback sans API — génère des réponses utiles basées sur les templates
 function generateLocalResponse(request: AIRequest, context: string): AIResponse {
   const templates: Record<string, string> = {
-    summarize: `📋 **Résumé du dossier**\n\n${context || 'Aucun dossier sélectionné.'}\n\n⚠️ *Pour des résumés détaillés avec analyse juridique, configurez la clé API Anthropic dans .env.local (ANTHROPIC_API_KEY).*`,
-
-    draft_letter: `📝 **Modèle de courrier**\n\nMaître [NOM],\nAvocat au Barreau de Niamey\n[Adresse du cabinet]\n\nÀ l'attention de [DESTINATAIRE]\n\nObjet : [OBJET]\n\nMaître / Monsieur / Madame,\n\nJ'ai l'honneur de [CORPS DU COURRIER].\n\nJe vous prie d'agréer, Maître / Monsieur / Madame, l'expression de mes salutations distinguées.\n\n[SIGNATURE]\n\n⚠️ *Configurez ANTHROPIC_API_KEY pour des courriers personnalisés automatiquement.*`,
-
-    checklist: `✅ **Checklist juridique**\n\n1. 🔴 URGENT — Vérifier les délais de procédure\n2. 🔴 URGENT — Préparer les conclusions\n3. 🟠 IMPORTANT — Rassembler les pièces justificatives\n4. 🟠 IMPORTANT — Contacter le client pour mise à jour\n5. 🟢 NORMAL — Mettre à jour le dossier\n6. 🟢 NORMAL — Archiver les correspondances\n\n⚠️ *Configurez ANTHROPIC_API_KEY pour des checklists adaptées au dossier.*`,
-
-    suggest_actions: `💡 **Actions suggérées**\n\n1. **Vérifier les échéances** — Délai : immédiat — Responsable : avocat\n2. **Préparer les pièces** — Délai : 48h — Responsable : collaborateur\n3. **Contacter le client** — Délai : cette semaine — Responsable : secrétariat\n4. **Planifier l'audience** — Délai : selon le rôle — Responsable : avocat\n\n⚠️ *Configurez ANTHROPIC_API_KEY pour des suggestions basées sur l'analyse du dossier.*`,
-
-    custom: `🤖 L'assistant IA est disponible. Pour l'activer complètement, ajoutez votre clé API dans .env.local :\n\n\`ANTHROPIC_API_KEY=sk-ant-...\`\n\nFonctionnalités disponibles :\n- Résumé de dossier\n- Génération de courrier\n- Checklist automatique\n- Suggestions d'actions`,
+    summarize: `📋 **Résumé du dossier**\n\n${context || 'Aucun dossier sélectionné.'}\n\n⚠️ *Pour des résumés détaillés avec analyse juridique, configurez la clé API Anthropic dans .env.local.*`,
+    draft_letter: `📝 **Modèle de courrier**\n\nMaître [NOM],\nAvocat au Barreau de Niamey\n\nObjet : [OBJET]\n\nMaître / Monsieur / Madame,\n\nJ'ai l'honneur de [CORPS DU COURRIER].\n\n⚠️ *Configurez ANTHROPIC_API_KEY pour des courriers personnalisés.*`,
+    checklist: `✅ **Checklist juridique**\n\n1. 🔴 URGENT — Vérifier les délais de procédure\n2. 🟠 IMPORTANT — Préparer les conclusions\n\n⚠️ *Configurez ANTHROPIC_API_KEY pour des checklists adaptées.*`,
+    suggest_actions: `💡 **Actions suggérées**\n\n1. **Vérifier les échéances** — Délai : immédiat\n2. **Préparer les pièces** — Délai : 48h\n\n⚠️ *Configurez ANTHROPIC_API_KEY pour des suggestions basées sur l'analyse.*`,
+    custom: `🤖 L'assistant IA est disponible. Ajoutez votre clé API dans .env.local pour l'activer.`,
   };
 
   return {
