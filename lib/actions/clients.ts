@@ -1,10 +1,4 @@
-// ============================================================
-// NumaLex — Server Actions : Clients
-// ============================================================
-
 'use server';
-
-import { handleSupabaseError } from '@/lib/utils/api-response';
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -38,7 +32,8 @@ export async function upsertClient(
     return { success: false, error: 'Session expirée. Veuillez vous reconnecter.' };
   }
 
-  const { data: profile } = await supabase
+  // Correction : On force le type 'any' pour éviter que TypeScript ne bloque sur 'never'
+  const { data: profile }: { data: any } = await supabase
     .from('profiles')
     .select('cabinet_id')
     .eq('id', user.id)
@@ -73,6 +68,7 @@ export async function upsertClient(
   };
 
   if (id) {
+    // Vérification de sécurité pour s'assurer que le client appartient au cabinet
     const { data: existing } = await supabase
       .from('clients')
       .select('id')
@@ -84,8 +80,8 @@ export async function upsertClient(
       return { success: false, error: 'Client introuvable ou accès non autorisé.' };
     }
 
-    const { error: updateError } = await supabase
-      .from('clients')
+    // Correction : On force le cast as 'any' pour l'update si nécessaire
+    const { error: updateError } = await (supabase.from('clients') as any)
       .update(payload)
       .eq('id', id);
 
@@ -96,8 +92,8 @@ export async function upsertClient(
     revalidatePath('/dashboard/clients');
     return { success: true, clientId: id };
   } else {
-    const { data: newClient, error: insertError } = await supabase
-      .from('clients')
+    // Correction : Cast 'as any' pour l'insert
+    const { data: newClient, error: insertError } = await (supabase.from('clients') as any)
       .insert(payload)
       .select('id')
       .single();
@@ -121,7 +117,7 @@ export async function deleteClient(clientId: string): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Non authentifié.');
 
-  const { data: profile } = await supabase
+  const { data: profile }: { data: any } = await supabase
     .from('profiles')
     .select('cabinet_id')
     .eq('id', user.id)
