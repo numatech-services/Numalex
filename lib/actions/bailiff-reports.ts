@@ -1,7 +1,6 @@
 'use server';
 
 import { bailiffReportSchema, validateInput } from '@/lib/validations';
-
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
@@ -18,7 +17,14 @@ export async function upsertBailiffReport(data: {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: 'Session expirée.' };
-  const { data: profile } = await supabase.from('profiles').select('cabinet_id').eq('id', user.id).single();
+
+  // Correction : Typage explicite ': { data: any }' pour éviter l'erreur 'never'
+  const { data: profile }: { data: any } = await supabase
+    .from('profiles')
+    .select('cabinet_id')
+    .eq('id', user.id)
+    .single();
+
   if (!profile) return { success: false, error: 'Profil introuvable.' };
 
   const payload = {
@@ -47,15 +53,14 @@ export async function upsertBailiffReport(data: {
     const { error } = await supabase.from('bailiff_reports').insert(payload);
     if (error) return { success: false, error: error.message };
   }
+  
   revalidatePath('/dashboard/constats');
   return { success: true };
 }
 
 export async function deleteBailiffReport(id: string) {
-  const validated = validateInput(bailiffReportSchema, data);
-  if (!validated.success) return { success: false, error: validated.error };
-
   const supabase = createClient();
+  // Correction : suppression du validateur qui utilisait 'data' (non défini ici)
   await supabase.from('bailiff_reports').delete().eq('id', id);
   revalidatePath('/dashboard/constats');
   redirect('/dashboard/constats');
