@@ -38,7 +38,7 @@ export async function addPayment(data: {
   if (facture.status === 'payee') return { success: false, error: 'Facture déjà payée.' };
   if (facture.status === 'annulee') return { success: false, error: 'Facture annulée.' };
 
-  // Correction : Cast 'as any' pour l'insertion dans 'paiements'
+  // Correction : Cast 'as any' pour l'insertion
   const { error } = await (supabase.from('paiements') as any).insert({
     cabinet_id: profile.cabinet_id,
     facture_id: data.facture_id,
@@ -51,13 +51,15 @@ export async function addPayment(data: {
 
   if (error) return { success: false, error: error.message };
 
+  // Récupération des paiements pour recalculer le statut
   const { data: payments } = await supabase
     .from('paiements')
     .select('montant')
     .eq('facture_id', data.facture_id)
     .eq('statut', 'reussi');
 
-  const totalPaid = (payments ?? []).reduce((s, p) => s + Number(p.montant), 0);
+  // Correction CRUCIALE : cast 'as any[]' pour permettre le reduce
+  const totalPaid = (payments as any[] ?? []).reduce((s, p) => s + Number(p.montant), 0);
 
   let newStatus = facture.status;
   if (totalPaid >= (facture.total_ttc ?? 0)) {
@@ -67,7 +69,6 @@ export async function addPayment(data: {
   }
 
   if (newStatus !== facture.status) {
-    // Correction : Cast 'as any' pour l'update de la facture
     await (supabase.from('invoices') as any).update({
       status: newStatus,
       ...(newStatus === 'payee' ? { paid_at: new Date().toISOString().split('T')[0] } : {}),
