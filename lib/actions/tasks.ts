@@ -1,89 +1,70 @@
 'use server';
 
-import { paymentSchema, validateInput } from '@/lib/validations';
+import { z } from 'zod';
+const taskSchema = z.object({ title: z.string().min(2).max(300), matter_id: z.string().uuid().optional().or(z.literal('')), due_date: z.string().optional(), priority: z.enum(['urgente','haute','normal','basse']).default('normal') });
+
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 
-export async function addPayment(data: {
-  facture_id: string;
-  montant: number;
-  mode: string;
-  reference?: string;
-  notes?: string;
+export async function createTask(formData: {
+  title: string;
+  matter_id?: string;
+  due_date?: string;
+  priority?: string;
 }) {
-  const validated = validateInput(paymentSchema, data);
-  if (!validated.success) return { success: false, error: validated.error };
+  const parsed = taskSchema.safeParse(formData);
+  if (!parsed.success) return { success: false, error: parsed.error.errors[0]?.message ?? "Données invalides" };
 
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false, error: 'Session expirée.' };
+  if (!user) return { success: false, error: 'Non authentifié.' };
 
-  // Correction : Cast 'any' pour le profil
-  const { data: profile }: { data: any } = await supabase
-    .from('profiles')
-    .select('cabinet_id')
-    .eq('id', user.id)
-    .single();
-
+  const { data: profile } = await supabase.from('profiles').select('cabinet_id').eq('id', user.id).single();
   if (!profile) return { success: false, error: 'Profil introuvable.' };
 
-  // Correction : Cast 'any' pour la facture (invoice)
-  const { data: facture }: { data: any } = await supabase
-    .from('invoices')
-    .select('id, total_ttc, status')
-    .eq('id', data.facture_id)
-    .single();
-
-  if (!facture) return { success: false, error: 'Facture introuvable.' };
-  if (facture.status === 'payee') return { success: false, error: 'Facture déjà payée.' };
-  if (facture.status === 'annulee') return { success: false, error: 'Facture annulée.' };
-
-  // Correction : Cast 'as any' pour l'insertion
-  const { error } = await (supabase.from('paiements') as any).insert({
+  const { error } = await supabase.from('tasks').insert({
     cabinet_id: profile.cabinet_id,
-    facture_id: data.facture_id,
-    montant: data.montant,
-    mode: data.mode,
-    reference: data.reference || null,
-    notes: data.notes || null,
-    statut: 'reussi',
+    title: formData.title,
+    matter_id: formData.matter_id || null,
+    due_date: formData.due_date || null,
+    priority: formData.priority || 'normal',
+    created_by: user.id,
+    assigned_to: user.id,
   });
 
   if (error) return { success: false, error: error.message };
-
-  // Récupération des paiements pour recalculer le statut
-  const { data: payments } = await supabase
-    .from('paiements')
-    .select('montant')
-    .eq('facture_id', data.facture_id)
-    .eq('statut', 'reussi');
-
-  // Correction CRUCIALE : cast 'as any[]' pour permettre le reduce
-  const totalPaid = (payments as any[] ?? []).reduce((s, p) => s + Number(p.montant), 0);
-
-  let newStatus = facture.status;
-  if (totalPaid >= (facture.total_ttc ?? 0)) {
-    newStatus = 'payee';
-  } else if (totalPaid > 0) {
-    newStatus = 'envoyee';
-  }
-
-  if (newStatus !== facture.status) {
-    await (supabase.from('invoices') as any).update({
-      status: newStatus,
-      ...(newStatus === 'payee' ? { paid_at: new Date().toISOString().split('T')[0] } : {}),
-    }).eq('id', data.facture_id);
-  }
-
-  revalidatePath('/dashboard/factures');
+  revalidatePath('/dashboard');
   return { success: true };
 }
 
-export async function fetchPayments(factureId: string) {
+export async function toggleTask(taskId: string, completed: boolean) {
   const supabase = createClient();
-  const { data } = await (supabase.from('paiements') as any)
-    .select('id, montant, mode, reference, statut, paid_at, notes')
-    .eq('facture_id', factureId)
-    .order('paid_at', { ascending: false });
-  return data ?? [];
+  const { error } = await supabase.from('tasks').update({
+    completed,
+    completed_at: completed ? new Date().toISOString() : null,
+  }).eq('id', taskId);
+
+  if (error) return { success: false, error: error.message };
+  revalidatePath('/dashboard');
+  return { success: true };
+}
+
+export async function deleteTask(taskId: string) {
+  const supabase = createClient();
+  const { error } = await supabase.from('tasks').delete().eq('id', taskId);
+  if (error) return { success: false, error: error.message };
+  revalidatePath('/dashboard');
+  return { success: true };
+}
+
+export async function markAlertRead(alertId: string) {
+  const supabase = createClient();
+  const { error } = await supabase.from('alerts').update({
+    read: true,
+    read_at: new Date().toISOString(),
+  }).eq('id', alertId);
+
+  if (error) return { success: false, error: error.message };
+  revalidatePath('/dashboard');
+  return { success: true };
 }
