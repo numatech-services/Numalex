@@ -1,7 +1,5 @@
 'use server';
 
-import { handleSupabaseError } from '@/lib/utils/api-response';
-
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
@@ -17,7 +15,13 @@ export async function upsertEvent(formData: EventFormValues): Promise<EventActio
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: 'Session expirée.' };
 
-  const { data: profile } = await supabase.from('profiles').select('cabinet_id').eq('id', user.id).single();
+  // Correction : Cast 'any' pour forcer TypeScript à accepter l'existence de cabinet_id
+  const { data: profile }: { data: any } = await supabase
+    .from('profiles')
+    .select('cabinet_id')
+    .eq('id', user.id)
+    .single();
+
   if (!profile) return { success: false, error: 'Profil introuvable.' };
 
   const parsed = eventSchema.safeParse(formData);
@@ -48,13 +52,15 @@ export async function upsertEvent(formData: EventFormValues): Promise<EventActio
     const { data: existing } = await supabase.from('events').select('id').eq('id', id).eq('cabinet_id', profile.cabinet_id).single();
     if (!existing) return { success: false, error: 'Événement introuvable.' };
 
-    const { error } = await supabase.from('events').update(payload).eq('id', id);
+    // Correction : Cast 'as any' pour l'accès à la table 'events'
+    const { error } = await (supabase.from('events') as any).update(payload).eq('id', id);
     if (error) return { success: false, error: error.message };
 
     revalidatePath('/dashboard/agenda');
     return { success: true, eventId: id };
   } else {
-    const { data: newEvent, error } = await supabase.from('events').insert(payload).select('id').single();
+    // Correction : Cast 'as any' pour l'insertion
+    const { data: newEvent, error } = await (supabase.from('events') as any).insert(payload).select('id').single();
     if (error || !newEvent) return { success: false, error: error?.message ?? 'Erreur inconnue' };
 
     revalidatePath('/dashboard/agenda');
@@ -67,10 +73,11 @@ export async function deleteEvent(eventId: string): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Non authentifié.');
 
-  const { data: profile } = await supabase.from('profiles').select('cabinet_id').eq('id', user.id).single();
+  const { data: profile }: { data: any } = await supabase.from('profiles').select('cabinet_id').eq('id', user.id).single();
   if (!profile) throw new Error('Profil introuvable.');
 
-  const { error } = await supabase.from('events').delete().eq('id', eventId).eq('cabinet_id', profile.cabinet_id);
+  // Correction : Cast 'as any' pour la suppression sécurisée
+  const { error } = await (supabase.from('events') as any).delete().eq('id', eventId).eq('cabinet_id', profile.cabinet_id);
   if (error) throw new Error(error.message);
 
   revalidatePath('/dashboard/agenda');
