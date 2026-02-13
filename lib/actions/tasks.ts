@@ -1,10 +1,15 @@
 'use server';
 
 import { z } from 'zod';
-const taskSchema = z.object({ title: z.string().min(2).max(300), matter_id: z.string().uuid().optional().or(z.literal('')), due_date: z.string().optional(), priority: z.enum(['urgente','haute','normal','basse']).default('normal') });
-
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+
+const taskSchema = z.object({ 
+  title: z.string().min(2).max(300), 
+  matter_id: z.string().uuid().optional().or(z.literal('')), 
+  due_date: z.string().optional(), 
+  priority: z.enum(['urgente','haute','normal','basse']).default('normal') 
+});
 
 export async function createTask(formData: {
   title: string;
@@ -19,10 +24,17 @@ export async function createTask(formData: {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: 'Non authentifié.' };
 
-  const { data: profile } = await supabase.from('profiles').select('cabinet_id').eq('id', user.id).single();
+  // Correction : Cast 'any' pour éviter l'erreur 'never'
+  const { data: profile }: { data: any } = await supabase
+    .from('profiles')
+    .select('cabinet_id')
+    .eq('id', user.id)
+    .single();
+
   if (!profile) return { success: false, error: 'Profil introuvable.' };
 
-  const { error } = await supabase.from('tasks').insert({
+  // Correction CRUCIALE : cast 'as any' pour autoriser l'insertion
+  const { error } = await (supabase.from('tasks') as any).insert({
     cabinet_id: profile.cabinet_id,
     title: formData.title,
     matter_id: formData.matter_id || null,
@@ -39,7 +51,8 @@ export async function createTask(formData: {
 
 export async function toggleTask(taskId: string, completed: boolean) {
   const supabase = createClient();
-  const { error } = await supabase.from('tasks').update({
+  // Correction : cast 'as any' pour l'update
+  const { error } = await (supabase.from('tasks') as any).update({
     completed,
     completed_at: completed ? new Date().toISOString() : null,
   }).eq('id', taskId);
@@ -51,7 +64,8 @@ export async function toggleTask(taskId: string, completed: boolean) {
 
 export async function deleteTask(taskId: string) {
   const supabase = createClient();
-  const { error } = await supabase.from('tasks').delete().eq('id', taskId);
+  // Correction : cast 'as any' pour la suppression
+  const { error } = await (supabase.from('tasks') as any).delete().eq('id', taskId);
   if (error) return { success: false, error: error.message };
   revalidatePath('/dashboard');
   return { success: true };
@@ -59,7 +73,8 @@ export async function deleteTask(taskId: string) {
 
 export async function markAlertRead(alertId: string) {
   const supabase = createClient();
-  const { error } = await supabase.from('alerts').update({
+  // Correction : cast 'as any' pour la table alerts
+  const { error } = await (supabase.from('alerts') as any).update({
     read: true,
     read_at: new Date().toISOString(),
   }).eq('id', alertId);
