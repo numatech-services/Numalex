@@ -1,6 +1,5 @@
 // ============================================================
-// NumaLex — Queries Dashboard
-// TOUTES les requêtes filtrent explicitement par cabinet_id.
+// NumaLex — Queries Dashboard (CORRIGÉ)
 // ============================================================
 
 import { createClient } from '@/lib/supabase/server';
@@ -47,7 +46,8 @@ export async function fetchDashboardKpis(cabinetId: string): Promise<DashboardKp
       .eq('read', false),
   ]);
 
-  const unpaidTotal = (unpaid.data ?? []).reduce((sum, inv) => sum + (inv.total_ttc ?? 0), 0);
+  // Correction : Cast 'as any[]' pour permettre le calcul du total
+  const unpaidTotal = (unpaid.data as any[] ?? []).reduce((sum, inv) => sum + (inv.total_ttc ?? 0), 0);
 
   return {
     activeMatters: matters.count ?? 0,
@@ -61,8 +61,7 @@ export async function fetchDashboardKpis(cabinetId: string): Promise<DashboardKp
 
 export async function fetchRecentMatters(cabinetId: string) {
   const supabase = createClient();
-  const { data } = await supabase
-    .from('matters')
+  const { data } = await (supabase.from('matters') as any)
     .select('id, title, status, reference, client:clients!matters_client_id_fkey(full_name), updated_at')
     .eq('cabinet_id', cabinetId)
     .order('updated_at', { ascending: false })
@@ -76,8 +75,7 @@ export async function fetchTodayEvents(cabinetId: string) {
   const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
   const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString();
 
-  const { data } = await supabase
-    .from('events')
+  const { data } = await (supabase.from('events') as any)
     .select('id, title, event_type, starts_at, ends_at, location')
     .eq('cabinet_id', cabinetId)
     .gte('starts_at', startOfDay)
@@ -89,8 +87,7 @@ export async function fetchTodayEvents(cabinetId: string) {
 
 export async function fetchRecentAlerts(cabinetId: string) {
   const supabase = createClient();
-  const { data } = await supabase
-    .from('alerts')
+  const { data } = await (supabase.from('alerts') as any)
     .select('id, message, level, read, created_at, matter:matters!alerts_matter_id_fkey(id,title)')
     .eq('cabinet_id', cabinetId)
     .order('created_at', { ascending: false })
@@ -100,8 +97,7 @@ export async function fetchRecentAlerts(cabinetId: string) {
 
 export async function fetchPendingTasks(cabinetId: string) {
   const supabase = createClient();
-  const { data } = await supabase
-    .from('tasks')
+  const { data } = await (supabase.from('tasks') as any)
     .select('id, title, due_date, priority, completed, matter:matters!tasks_matter_id_fkey(id,title)')
     .eq('cabinet_id', cabinetId)
     .eq('completed', false)
@@ -112,8 +108,7 @@ export async function fetchPendingTasks(cabinetId: string) {
 
 export async function fetchRecentDocuments(cabinetId: string) {
   const supabase = createClient();
-  const { data } = await supabase
-    .from('documents')
+  const { data } = await (supabase.from('documents') as any)
     .select('id, title, doc_type, file_url, file_size, created_at, matter:matters!documents_matter_id_fkey(id,title)')
     .eq('cabinet_id', cabinetId)
     .order('created_at', { ascending: false })
