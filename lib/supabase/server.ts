@@ -1,15 +1,8 @@
 // ============================================================
 // NumaLex — Supabase Server Client (App Router)
-//
-// FIX C1 : Migration de @supabase/auth-helpers-nextjs (déprécié)
-//          vers @supabase/ssr (officiel, supporté).
-//
-// Installation requise :
-//   npm install @supabase/ssr @supabase/supabase-js
-//   npm uninstall @supabase/auth-helpers-nextjs
 // ============================================================
 
-import { createServerClient } from '@supabase/ssr';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import type { Database } from '@/types/supabase';
 
@@ -28,14 +21,14 @@ export function createClient() {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll(cookiesToSet) {
+        // Correction : Ajout du type explicite pour cookiesToSet
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           try {
             cookiesToSet.forEach(({ name, value, options }) => {
               cookieStore.set(name, value, options);
             });
           } catch {
-            // setAll est appelé depuis un Server Component en lecture seule.
-            // On ignore silencieusement — le middleware gère le rafraîchissement.
+            // Ignoré dans les Server Components (lecture seule)
           }
         },
       },
