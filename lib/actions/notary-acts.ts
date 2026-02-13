@@ -1,7 +1,6 @@
 'use server';
 
 import { notaryActSchema, validateInput } from '@/lib/validations';
-
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
@@ -17,7 +16,14 @@ export async function upsertNotaryAct(data: {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: 'Session expirée.' };
-  const { data: profile } = await supabase.from('profiles').select('cabinet_id').eq('id', user.id).single();
+
+  // Correction : Cast 'any' pour éviter l'erreur de propriété 'cabinet_id' sur type 'never'
+  const { data: profile }: { data: any } = await supabase
+    .from('profiles')
+    .select('cabinet_id')
+    .eq('id', user.id)
+    .single();
+
   if (!profile) return { success: false, error: 'Profil introuvable.' };
 
   const payload = {
@@ -37,19 +43,23 @@ export async function upsertNotaryAct(data: {
   };
 
   if (data.id) {
-    const { error } = await supabase.from('notary_acts').update(payload).eq('id', data.id);
+    // Correction : Cast 'as any' pour l'accès à la table 'notary_acts'
+    const { error } = await (supabase.from('notary_acts') as any).update(payload).eq('id', data.id);
     if (error) return { success: false, error: error.message };
   } else {
-    const { error } = await supabase.from('notary_acts').insert(payload);
+    // Correction : Cast 'as any' pour l'insertion
+    const { error } = await (supabase.from('notary_acts') as any).insert(payload);
     if (error) return { success: false, error: error.message };
   }
+  
   revalidatePath('/dashboard/actes');
   return { success: true };
 }
 
 export async function deleteNotaryAct(id: string) {
   const supabase = createClient();
-  await supabase.from('notary_acts').delete().eq('id', id);
+  // Correction : Cast 'as any' pour la suppression
+  await (supabase.from('notary_acts') as any).delete().eq('id', id);
   revalidatePath('/dashboard/actes');
   redirect('/dashboard/actes');
 }
