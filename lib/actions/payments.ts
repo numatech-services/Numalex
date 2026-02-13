@@ -1,7 +1,6 @@
 'use server';
 
 import { paymentSchema, validateInput } from '@/lib/validations';
-
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 
@@ -19,11 +18,17 @@ export async function addPayment(data: {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: 'Session expirée.' };
 
-  const { data: profile } = await supabase.from('profiles').select('cabinet_id').eq('id', user.id).single();
+  // Correction : Cast 'any' pour le profil
+  const { data: profile }: { data: any } = await supabase
+    .from('profiles')
+    .select('cabinet_id')
+    .eq('id', user.id)
+    .single();
+
   if (!profile) return { success: false, error: 'Profil introuvable.' };
 
-  // Vérifier que la facture appartient au cabinet
-  const { data: facture } = await supabase
+  // Correction : Cast 'any' pour la facture (invoice)
+  const { data: facture }: { data: any } = await supabase
     .from('invoices')
     .select('id, total_ttc, status')
     .eq('id', data.facture_id)
@@ -33,8 +38,8 @@ export async function addPayment(data: {
   if (facture.status === 'payee') return { success: false, error: 'Facture déjà payée.' };
   if (facture.status === 'annulee') return { success: false, error: 'Facture annulée.' };
 
-  // Insérer le paiement
-  const { error } = await supabase.from('paiements').insert({
+  // Correction : Cast 'as any' pour l'insertion dans 'paiements'
+  const { error } = await (supabase.from('paiements') as any).insert({
     cabinet_id: profile.cabinet_id,
     facture_id: data.facture_id,
     montant: data.montant,
@@ -46,7 +51,6 @@ export async function addPayment(data: {
 
   if (error) return { success: false, error: error.message };
 
-  // Calculer le total payé et mettre à jour le statut de la facture
   const { data: payments } = await supabase
     .from('paiements')
     .select('montant')
@@ -59,12 +63,12 @@ export async function addPayment(data: {
   if (totalPaid >= (facture.total_ttc ?? 0)) {
     newStatus = 'payee';
   } else if (totalPaid > 0) {
-    // Statut partiel — on garde "envoyee" car notre enum n'a pas "partielle"
     newStatus = 'envoyee';
   }
 
   if (newStatus !== facture.status) {
-    await supabase.from('invoices').update({
+    // Correction : Cast 'as any' pour l'update de la facture
+    await (supabase.from('invoices') as any).update({
       status: newStatus,
       ...(newStatus === 'payee' ? { paid_at: new Date().toISOString().split('T')[0] } : {}),
     }).eq('id', data.facture_id);
@@ -76,8 +80,7 @@ export async function addPayment(data: {
 
 export async function fetchPayments(factureId: string) {
   const supabase = createClient();
-  const { data } = await supabase
-    .from('paiements')
+  const { data } = await (supabase.from('paiements') as any)
     .select('id, montant, mode, reference, statut, paid_at, notes')
     .eq('facture_id', factureId)
     .order('paid_at', { ascending: false });
