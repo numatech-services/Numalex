@@ -18,7 +18,7 @@ export async function upsertBailiffReport(data: {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: 'Session expirée.' };
 
-  // Correction : Typage explicite ': { data: any }' pour éviter l'erreur 'never'
+  // Correction : Cast 'any' pour éviter l'erreur de propriété sur 'profile'
   const { data: profile }: { data: any } = await supabase
     .from('profiles')
     .select('cabinet_id')
@@ -47,10 +47,15 @@ export async function upsertBailiffReport(data: {
   };
 
   if (data.id) {
-    const { error } = await supabase.from('bailiff_reports').update(payload).eq('id', data.id);
+    // Correction : Cast 'as any' pour autoriser l'update
+    const { error } = await (supabase.from('bailiff_reports') as any)
+      .update(payload)
+      .eq('id', data.id);
     if (error) return { success: false, error: error.message };
   } else {
-    const { error } = await supabase.from('bailiff_reports').insert(payload);
+    // Correction : Cast 'as any' pour autoriser l'insert
+    const { error } = await (supabase.from('bailiff_reports') as any)
+      .insert(payload);
     if (error) return { success: false, error: error.message };
   }
   
@@ -60,8 +65,8 @@ export async function upsertBailiffReport(data: {
 
 export async function deleteBailiffReport(id: string) {
   const supabase = createClient();
-  // Correction : suppression du validateur qui utilisait 'data' (non défini ici)
-  await supabase.from('bailiff_reports').delete().eq('id', id);
+  // Correction : Cast 'as any' ici aussi par précaution
+  await (supabase.from('bailiff_reports') as any).delete().eq('id', id);
   revalidatePath('/dashboard/constats');
   redirect('/dashboard/constats');
 }
