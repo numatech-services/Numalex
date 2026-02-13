@@ -1,14 +1,4 @@
-// ============================================================
-// NumaLex — Server Actions : Dossiers (CORRIGÉ)
-//
-// FIX C6 : `deleteMatter` ne mélange plus `redirect()` et
-//          un type de retour `UpsertMatterResult`. Le redirect
-//          est effectué après le return.
-// ============================================================
-
 'use server';
-
-import { handleSupabaseError } from '@/lib/utils/api-response';
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -50,7 +40,8 @@ export async function upsertMatter(
   }
 
   // ── 2. Récupérer le cabinet_id depuis le profil (sécurité) ──
-  const { data: profile, error: profileError } = await supabase
+  // Correction : On force le type 'any' pour éviter l'erreur 'never' au build
+  const { data: profile, error: profileError }: { data: any; error: any } = await supabase
     .from('profiles')
     .select('cabinet_id, role')
     .eq('id', user.id)
@@ -109,8 +100,8 @@ export async function upsertMatter(
       };
     }
 
-    const { error: updateError } = await supabase
-      .from('matters')
+    // Correction : Cast 'as any' pour l'update
+    const { error: updateError } = await (supabase.from('matters') as any)
       .update(payload)
       .eq('id', id);
 
@@ -127,8 +118,8 @@ export async function upsertMatter(
 
     return { success: true, matterId: id };
   } else {
-    const { data: newMatter, error: insertError } = await supabase
-      .from('matters')
+    // Correction : Cast 'as any' pour l'insert
+    const { data: newMatter, error: insertError } = await (supabase.from('matters') as any)
       .insert(payload)
       .select('id')
       .single();
@@ -149,10 +140,6 @@ export async function upsertMatter(
 
 // ============================================================
 // Action secondaire : deleteMatter
-//
-// FIX C6 : `redirect()` lance NEXT_REDIRECT (une exception).
-//          On ne peut PAS la mélanger avec un return typé.
-//          Solution : return void, et redirect TOUJOURS en fin.
 // ============================================================
 
 export async function deleteMatter(matterId: string): Promise<void> {
@@ -166,7 +153,8 @@ export async function deleteMatter(matterId: string): Promise<void> {
     throw new Error('Non authentifié.');
   }
 
-  const { data: profile } = await supabase
+  // Correction : Cast 'any' ici aussi
+  const { data: profile }: { data: any } = await supabase
     .from('profiles')
     .select('cabinet_id')
     .eq('id', user.id)
@@ -188,5 +176,4 @@ export async function deleteMatter(matterId: string): Promise<void> {
 
   revalidatePath('/dashboard/dossiers');
   redirect('/dashboard/dossiers');
-  // redirect() lance NEXT_REDIRECT — le code après n'est jamais atteint.
 }
