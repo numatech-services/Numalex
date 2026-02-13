@@ -1,9 +1,5 @@
 // ============================================================
-// NumaLex — Repository Layer
-// Couche d'accès données centralisée.
-// - Toutes les requêtes passent par ici
-// - Filtrage cabinet_id AUTOMATIQUE
-// - Vérification permissions intégrée
+// NumaLex — Repository Layer (CORRIGÉ)
 // ============================================================
 
 import { createClient } from '@/lib/supabase/server';
@@ -20,19 +16,18 @@ export type Permission =
 export interface SessionContext {
   userId: string;
   cabinetId: string;
-  role: string;        // user_role (avocat, notaire, huissier)
-  rbacRole: string;    // rbac_role (admin, associe, collaborateur, secretariat, lecture)
+  role: string;
+  rbacRole: string;
   fullName: string;
 }
-
-// ─── Récupérer le contexte de session avec vérification ───
 
 export async function getSessionContext(): Promise<SessionContext> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('NOT_AUTHENTICATED');
 
-  const { data: profile } = await supabase
+  // Correction : Cast explicite 'any' pour éviter l'erreur 'never' au build
+  const { data: profile }: { data: any } = await supabase
     .from('profiles')
     .select('cabinet_id, role, rbac_role, full_name, active')
     .eq('id', user.id)
@@ -50,14 +45,11 @@ export async function getSessionContext(): Promise<SessionContext> {
   };
 }
 
-// ─── Vérifier une permission côté applicatif ───
-
 export async function hasPermission(ctx: SessionContext, permission: Permission): Promise<boolean> {
-  // Admin a toujours tous les droits
   if (ctx.rbacRole === 'admin') return true;
 
   const supabase = createClient();
-  const { data } = await supabase
+  const { data }: { data: any } = await supabase
     .from('role_permissions')
     .select(permission)
     .eq('cabinet_id', ctx.cabinetId)
@@ -67,21 +59,17 @@ export async function hasPermission(ctx: SessionContext, permission: Permission)
   return data?.[permission] === true;
 }
 
-// Lancer une erreur si permission refusée
 export async function requirePermission(ctx: SessionContext, permission: Permission): Promise<void> {
   const allowed = await hasPermission(ctx, permission);
   if (!allowed) {
-    throw new Error(`PERMISSION_DENIED: ${permission} non autorisé pour le rôle ${ctx.rbacRole}`);
+    throw new Error(`PERMISSION_DENIED: ${permission} non autorisé`);
   }
 }
-
-// ─── Repositories typés par table ───
 
 export function createRepository(ctx: SessionContext) {
   const supabase = createClient();
 
   return {
-    // ═══ MATTERS ═══
     matters: {
       async list(options?: { status?: string; search?: string; limit?: number; offset?: number }) {
         let q = supabase.from('matters')
@@ -98,7 +86,7 @@ export function createRepository(ctx: SessionContext) {
       },
 
       async getById(id: string) {
-        return supabase.from('matters')
+        return (supabase.from('matters') as any)
           .select('*, client:clients!matters_client_id_fkey(*)')
           .eq('id', id)
           .eq('cabinet_id', ctx.cabinetId)
@@ -107,47 +95,45 @@ export function createRepository(ctx: SessionContext) {
 
       async create(data: Record<string, any>) {
         await requirePermission(ctx, 'can_create_matters');
-        return supabase.from('matters').insert({ ...data, cabinet_id: ctx.cabinetId, created_by: ctx.userId });
+        return (supabase.from('matters') as any).insert({ ...data, cabinet_id: ctx.cabinetId, created_by: ctx.userId });
       },
 
       async update(id: string, data: Record<string, any>) {
         await requirePermission(ctx, 'can_edit_matters');
-        return supabase.from('matters').update(data).eq('id', id).eq('cabinet_id', ctx.cabinetId);
+        return (supabase.from('matters') as any).update(data).eq('id', id).eq('cabinet_id', ctx.cabinetId);
       },
 
       async delete(id: string) {
         await requirePermission(ctx, 'can_delete_matters');
-        return supabase.from('matters').delete().eq('id', id).eq('cabinet_id', ctx.cabinetId);
+        return (supabase.from('matters') as any).delete().eq('id', id).eq('cabinet_id', ctx.cabinetId);
       },
     },
 
-    // ═══ CLIENTS ═══
     clients: {
       async list() {
         return supabase.from('clients').select('*').eq('cabinet_id', ctx.cabinetId).order('full_name');
       },
 
       async getById(id: string) {
-        return supabase.from('clients').select('*').eq('id', id).eq('cabinet_id', ctx.cabinetId).single();
+        return (supabase.from('clients') as any).select('*').eq('id', id).eq('cabinet_id', ctx.cabinetId).single();
       },
 
       async create(data: Record<string, any>) {
         await requirePermission(ctx, 'can_create_clients');
-        return supabase.from('clients').insert({ ...data, cabinet_id: ctx.cabinetId });
+        return (supabase.from('clients') as any).insert({ ...data, cabinet_id: ctx.cabinetId });
       },
 
       async update(id: string, data: Record<string, any>) {
         await requirePermission(ctx, 'can_edit_clients');
-        return supabase.from('clients').update(data).eq('id', id).eq('cabinet_id', ctx.cabinetId);
+        return (supabase.from('clients') as any).update(data).eq('id', id).eq('cabinet_id', ctx.cabinetId);
       },
 
       async delete(id: string) {
         await requirePermission(ctx, 'can_delete_clients');
-        return supabase.from('clients').delete().eq('id', id).eq('cabinet_id', ctx.cabinetId);
+        return (supabase.from('clients') as any).delete().eq('id', id).eq('cabinet_id', ctx.cabinetId);
       },
     },
 
-    // ═══ EVENTS ═══
     events: {
       async list(options?: { from?: string; to?: string }) {
         let q = supabase.from('events').select('*').eq('cabinet_id', ctx.cabinetId).order('starts_at');
@@ -158,27 +144,25 @@ export function createRepository(ctx: SessionContext) {
 
       async create(data: Record<string, any>) {
         await requirePermission(ctx, 'can_create_events');
-        return supabase.from('events').insert({ ...data, cabinet_id: ctx.cabinetId, created_by: ctx.userId });
+        return (supabase.from('events') as any).insert({ ...data, cabinet_id: ctx.cabinetId, created_by: ctx.userId });
       },
     },
 
-    // ═══ INVOICES ═══
     invoices: {
       async list() {
         return supabase.from('invoices').select('*').eq('cabinet_id', ctx.cabinetId).order('created_at', { ascending: false });
       },
 
       async getById(id: string) {
-        return supabase.from('invoices').select('*').eq('id', id).eq('cabinet_id', ctx.cabinetId).single();
+        return (supabase.from('invoices') as any).select('*').eq('id', id).eq('cabinet_id', ctx.cabinetId).single();
       },
 
       async create(data: Record<string, any>) {
         await requirePermission(ctx, 'can_create_invoices');
-        return supabase.from('invoices').insert({ ...data, cabinet_id: ctx.cabinetId, issued_by: ctx.userId });
+        return (supabase.from('invoices') as any).insert({ ...data, cabinet_id: ctx.cabinetId, issued_by: ctx.userId });
       },
     },
 
-    // ═══ DOCUMENTS ═══
     documents: {
       async list(matterId?: string) {
         let q = supabase.from('documents').select('*').eq('cabinet_id', ctx.cabinetId).order('created_at', { ascending: false });
@@ -187,21 +171,18 @@ export function createRepository(ctx: SessionContext) {
       },
     },
 
-    // ═══ TASKS ═══
     tasks: {
       async listPending() {
         return supabase.from('tasks').select('*').eq('cabinet_id', ctx.cabinetId).eq('completed', false).order('due_date');
       },
     },
 
-    // ═══ ALERTS ═══
     alerts: {
       async listUnread() {
         return supabase.from('alerts').select('*').eq('cabinet_id', ctx.cabinetId).eq('read', false).order('created_at', { ascending: false });
       },
     },
 
-    // ═══ RAW (pour des requêtes custom) ═══
     raw: supabase,
     ctx,
   };
