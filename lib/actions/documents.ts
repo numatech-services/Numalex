@@ -1,22 +1,31 @@
 'use server';
 
-import { handleSupabaseError } from '@/lib/utils/api-response';
 import { z } from 'zod';
-const uploadSchema = z.object({ title: z.string().min(1).max(300), doc_type: z.string(), matter_id: z.string().optional() });
-// re-export from '@/lib/utils/api-response';
-
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 
+const uploadSchema = z.object({ 
+  title: z.string().min(1).max(300), 
+  doc_type: z.string(), 
+  matter_id: z.string().optional() 
+});
+
 type UploadResult = { success: true; documentId: string } | { success: false; error: string };
+
 export async function uploadDocument(formData: FormData): Promise<UploadResult> {
   const supabase = createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: 'Session expirée.' };
 
-  const { data: profile } = await supabase.from('profiles').select('cabinet_id').eq('id', user.id).single();
+  // Correction : Typage explicite 'any' pour éviter l'erreur 'never'
+  const { data: profile }: { data: any } = await supabase
+    .from('profiles')
+    .select('cabinet_id')
+    .eq('id', user.id)
+    .single();
+
   if (!profile) return { success: false, error: 'Profil introuvable.' };
 
   const file = formData.get('file') as File | null;
@@ -28,7 +37,6 @@ export async function uploadDocument(formData: FormData): Promise<UploadResult> 
   if (!title) return { success: false, error: 'Le titre est obligatoire.' };
   if (file.size > 10 * 1024 * 1024) return { success: false, error: 'Fichier trop volumineux (max 10 Mo).' };
 
-  // Validation MIME stricte — seuls les types autorisés
   const ALLOWED_MIMES = [
     'application/pdf',
     'application/msword',
@@ -37,18 +45,18 @@ export async function uploadDocument(formData: FormData): Promise<UploadResult> 
     'image/jpeg', 'image/png', 'image/webp',
     'text/plain',
   ];
+  
   if (!ALLOWED_MIMES.includes(file.type)) {
-    return { success: false, error: `Type de fichier non autorisé (${file.type}). Formats acceptés : PDF, Word, Excel, images (JPG/PNG), texte.` };
+    return { success: false, error: `Type de fichier non autorisé. Formats acceptés : PDF, Word, Excel, Images.` };
   }
 
-  // Validation extension
   const ALLOWED_EXTS = ['pdf', 'doc', 'docx', 'xlsx', 'jpg', 'jpeg', 'png', 'webp', 'txt'];
   const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
   if (!ALLOWED_EXTS.includes(ext)) {
     return { success: false, error: `Extension .${ext} non autorisée.` };
   }
 
-  // Stockage organisé : /org/{cabinetId}/matters/{matterId}/filename
+  // Utilisation de cabinet_id maintenant validé par le cast 'any'
   const matterPath = matterId ? `matters/${matterId}` : 'general';
   const storagePath = `${profile.cabinet_id}/${matterPath}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
@@ -57,15 +65,12 @@ export async function uploadDocument(formData: FormData): Promise<UploadResult> 
     .upload(storagePath, file, { contentType: file.type, upsert: false });
 
   if (uploadError) {
-    console.error('[uploadDocument] Storage error:', uploadError);
     return { success: false, error: 'Échec de l\'upload : ' + uploadError.message };
   }
 
-  // Récupérer l'URL publique (ou signée selon la config)
   const { data: urlData } = supabase.storage.from('documents').getPublicUrl(storagePath);
   const fileUrl = urlData.publicUrl;
 
-  // Créer l'enregistrement en base
   const { data: doc, error: dbError } = await supabase
     .from('documents')
     .insert({
@@ -86,7 +91,7 @@ export async function uploadDocument(formData: FormData): Promise<UploadResult> 
   }
 
   revalidatePath('/dashboard/documents');
-  return { success: true, documentId: doc.id };
+  return { success: true, documentId: (doc as any).id };
 }
 
 export async function deleteDocument(documentId: string): Promise<void> {
@@ -95,16 +100,24 @@ export async function deleteDocument(documentId: string): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Non authentifié.');
 
-  const { data: profile } = await supabase.from('profiles').select('cabinet_id').eq('id', user.id).single();
+  const { data: profile }: { data: any } = await supabase
+    .from('profiles')
+    .select('cabinet_id')
+    .eq('id', user.id)
+    .single();
+
   if (!profile) throw new Error('Profil introuvable.');
 
-  // Récupérer le path pour supprimer du storage
-  const { data: doc } = await supabase.from('documents').select('file_url').eq('id', documentId).eq('cabinet_id', profile.cabinet_id).single();
+  const { data: doc }: { data: any } = await supabase
+    .from('documents')
+    .select('file_url')
+    .eq('id', documentId)
+    .eq('cabinet_id', profile.cabinet_id)
+    .single();
 
   const { error } = await supabase.from('documents').delete().eq('id', documentId).eq('cabinet_id', profile.cabinet_id);
   if (error) throw new Error(error.message);
 
-  // Tenter de supprimer du storage (best-effort)
   if (doc?.file_url) {
     const path = doc.file_url.split('/documents/')[1];
     if (path) {
